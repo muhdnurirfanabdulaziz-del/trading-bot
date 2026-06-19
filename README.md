@@ -19,11 +19,11 @@ python main.py
 
 Edit `config.py` to set your ticker symbol and moving-average windows.
 
-## Stratagy
+## Strategy
 
 The bot buys when the short moving average crosses above the long moving average,
 and sells when it crosses below.
 
 ## Disclaimer
 
-This is for educational puroses only. Do not use with real funds.
+This is for educational purposes only. Do not use with real funds.
