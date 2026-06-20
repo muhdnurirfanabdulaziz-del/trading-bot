@@ -5,6 +5,8 @@ from config import TICKER, SHORT_WINDOW, LONG_WINDOW
 
 def fetch_prices(ticker: str, period: str = "6mo") -> list[float]:
     data = yf.download(ticker, period=period, progress=False)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
     return data["Close"].dropna().tolist()
 
 
