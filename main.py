@@ -1,5 +1,11 @@
+import yfinance as yf
 import pandas as pd
 from config import TICKER, SHORT_WINDOW, LONG_WINDOW
+
+
+def fetch_prices(ticker: str, period: str = "6mo") -> list[float]:
+    data = yf.download(ticker, period=period, progress=False)
+    return data["Close"].dropna().tolist()
 
 
 def moving_average_strategy(prices: list[float]) -> list[str]:
@@ -20,5 +26,14 @@ def moving_average_strategy(prices: list[float]) -> list[str]:
 
 
 if __name__ == "__main__":
-    print(f"Running strategy for {TICKER} "
-          f"(short={SHORT_WINDOW}, long={LONG_WINDOW})")
+    print(f"Fetching 6 months of {TICKER} prices...")
+    prices = fetch_prices(TICKER)
+    signals = moving_average_strategy(prices)
+
+    current_signal = signals[-1]
+    print(f"Latest price : ${prices[-1]:.2f}")
+    print(f"Signal       : {current_signal.upper()}")
+    print()
+    print("Last 5 signals:")
+    for price, signal in zip(prices[-5:], signals[-5:]):
+        print(f"  ${price:.2f}  ->  {signal}")
