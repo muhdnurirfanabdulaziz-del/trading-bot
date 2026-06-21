@@ -1,7 +1,5 @@
 import pandas as pd
 from config import TICKER, SHORT_WINDOW, LONG_WINDOW
-from fetch import fetch_prices
-from explain import explain_signal
 
 
 def moving_average_strategy(prices: list[float]) -> list[str]:
@@ -22,14 +20,5 @@ def moving_average_strategy(prices: list[float]) -> list[str]:
 
 
 if __name__ == "__main__":
-    print(f"Running strategy for {TICKER} (short={SHORT_WINDOW}, long={LONG_WINDOW})\n")
-
-    prices = fetch_prices()
-    signals = moving_average_strategy(prices)
-
-    latest = signals[-1].upper()
-    print(f"Latest price : ${prices[-1]:.2f}")
-    print(f"Signal       : {latest}\n")
-
-    print("AI Explanation:")
-    print(explain_signal(prices, signals))
+    print(f"Running strategy for {TICKER} "
+          f"(short={SHORT_WINDOW}, long={LONG_WINDOW})")
