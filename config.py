@@ -1,10 +1,20 @@
 # --- Instrument ---
 TICKER = "US30"          # Dow Jones Industrial Average CFD/index
+YF_SYMBOL = "^DJI"       # yfinance proxy for US30 (Dow Jones index)
 POINT_VALUE = 1.0        # $ per point per unit
+
+# --- Live data feed ---
+DATA_INTERVAL = "5m"     # candle size for live ICT analysis
+DATA_PERIOD = "5d"       # history window (yfinance caps 5m data at 60d)
+REFRESH_SECONDS = 300    # poll interval in --live mode (one M5 candle)
 
 # --- Legacy moving-average strategy ---
 SHORT_WINDOW = 10
 LONG_WINDOW = 50
+VOLUME_WINDOW = 20
+MACD_FAST = 12
+MACD_SLOW = 26
+MACD_SIGNAL = 9
 
 # --- ICT / Smart Money Concepts ---
 # Swing detection: a swing high/low needs this many lower/higher bars on each side.

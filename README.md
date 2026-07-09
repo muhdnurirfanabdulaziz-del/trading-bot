@@ -1,6 +1,7 @@
 # trading-bot
 
-An algorithmic trading bot for **US30** built around ICT / Smart Money Concepts.
+An algorithmic trading bot for **US30** built around ICT / Smart Money Concepts,
+running on live intraday data from yfinance (`^DJI`).
 
 ## Concepts implemented (`ict/` package)
 
@@ -35,17 +36,21 @@ A signal only fires when everything lines up on one bar:
 
 ```bash
 pip install -r requirements.txt
-python main.py                    # runs on built-in synthetic US30 data
+python main.py                    # one-shot: live US30 candles -> full ICT report
+python main.py --live             # keep polling every 5 minutes, announce new setups
+python main.py --demo             # offline run on built-in synthetic US30 data
 python main.py path/to/us30.csv   # or your own OHLC export (time,open,high,low,close)
 ```
 
-CSV timestamps are assumed UTC (naive) or may carry their own timezone.
+Live runs also print the legacy MA + volume + MACD signal alongside the ICT
+report. CSV timestamps are assumed UTC (naive) or may carry their own timezone.
 
 ## Configuration
 
-Edit `config.py`: tolerances are in US30 points (equal-level tolerance,
-minimum FVG size, displacement factor), plus kill-zone windows, swing
-lookback, and minimum reward:risk.
+Edit `config.py`: the data feed (`YF_SYMBOL`, candle interval/period, poll
+rate), ICT tolerances in US30 points (equal-level tolerance, minimum FVG
+size, displacement factor), kill-zone windows, swing lookback, and minimum
+reward:risk.
 
 ## Tests
 

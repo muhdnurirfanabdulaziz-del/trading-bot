@@ -1,11 +1,41 @@
 """OHLC data for the bot.
 
+`fetch_ohlc` pulls live intraday candles from yfinance (US30 via ^DJI).
 `load_csv` takes any broker/TradingView export with time,open,high,low,close
 columns. `sample_us30` synthesises a realistic US30 M5 session so everything
 runs offline on a laptop with no data feed.
 """
 import numpy as np
 import pandas as pd
+
+from config import DATA_INTERVAL, DATA_PERIOD, YF_SYMBOL
+
+
+def fetch_ohlc(symbol: str = YF_SYMBOL,
+               interval: str = DATA_INTERVAL,
+               period: str = DATA_PERIOD) -> pd.DataFrame:
+    """Live OHLC candles from yfinance, UTC-indexed, ready for the ICT engine."""
+    import yfinance as yf
+
+    data = yf.download(symbol, interval=interval, period=period,
+                       progress=False, auto_adjust=True)
+    if data is None or data.empty:
+        raise RuntimeError(
+            f"yfinance returned no data for {symbol} "
+            f"(interval={interval}, period={period}) - check the symbol "
+            f"and your connection.")
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+    data.columns = [c.lower() for c in data.columns]
+    data = data.dropna(subset=["open", "high", "low", "close"])
+    if data.index.tz is None:
+        data.index = data.index.tz_localize("UTC")
+    else:
+        data.index = data.index.tz_convert("UTC")
+    cols = ["open", "high", "low", "close"]
+    if "volume" in data.columns:
+        cols.append("volume")
+    return data[cols].astype(float)
 
 
 def load_csv(path: str) -> pd.DataFrame:
