@@ -124,6 +124,25 @@ class TestStrategy:
             else:
                 assert sig.target < sig.entry < sig.stop
 
+    def test_default_confluence_actually_fires(self):
+        # at MIN_CONFLUENCE=1 the sample day must produce trades
+        assert len(generate_signals(sample_us30())) >= 1
+
+    def test_strict_mode_fires_less(self):
+        df = sample_us30()
+        loose = generate_signals(df, min_confluence=1)
+        strict = generate_signals(df, min_confluence=2)
+        assert len(strict) <= len(loose)
+        assert all(s.confluence == 2 for s in strict)
+
+    def test_cooldown_spaces_same_direction_signals(self):
+        from config import SIGNAL_COOLDOWN_BARS
+        signals = generate_signals(sample_us30())
+        for direction in ("long", "short"):
+            idx = [s.index for s in signals if s.direction == direction]
+            gaps = [b - a for a, b in zip(idx, idx[1:])]
+            assert all(g >= SIGNAL_COOLDOWN_BARS for g in gaps)
+
     def test_runs_clean_on_sample_data(self):
         # end-to-end smoke: no exceptions across all detectors
         df = sample_us30()

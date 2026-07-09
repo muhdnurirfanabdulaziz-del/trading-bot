@@ -38,6 +38,20 @@ KILL_ZONES = {
     "new_york_am": ("08:30", "11:00"),
 }
 
-# --- Risk ---
-RISK_PER_TRADE = 0.01    # 1% of account per trade
-MIN_RR = 2.0             # minimum reward:risk to take a setup
+# --- Signal confluence ---
+# How many bars a sweep or structure event stays "fresh" as confluence
+# (36 x M5 = 3 hours).
+SIGNAL_FRESHNESS_BARS = 36
+# Narrative conditions required on top of kill zone + OB/FVG tap:
+# 1 = liquidity sweep OR structure break (trades regularly)
+# 2 = sweep AND structure break (strict A+ only - rarely trades)
+MIN_CONFLUENCE = 1
+# Bars to wait before signalling the same direction again.
+SIGNAL_COOLDOWN_BARS = 12
+
+# --- Risk / paper trading ---
+ACCOUNT_BALANCE = 10_000.0   # starting paper balance
+RISK_PER_TRADE = 0.01        # 1% of account per trade
+MIN_RR = 2.0                 # minimum reward:risk to take a setup
+PAPER_STATE_FILE = "paper_state.json"
+TRADE_LOG_FILE = "trades.csv"

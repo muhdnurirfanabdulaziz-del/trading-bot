@@ -3,6 +3,7 @@ from ict.liquidity import find_liquidity_pools, find_liquidity_sweeps
 from ict.fvg import find_fair_value_gaps
 from ict.order_blocks import find_order_blocks
 from ict.killzones import in_kill_zone, active_kill_zone
+from ict.paper import PaperTrader
 from ict.strategy import generate_signals
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "in_kill_zone",
     "active_kill_zone",
     "generate_signals",
+    "PaperTrader",
 ]

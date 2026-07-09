@@ -24,13 +24,29 @@ running on live intraday data from yfinance (`^DJI`).
 
 ## Strategy (`ict/strategy.py`)
 
-A signal only fires when everything lines up on one bar:
+Hard requirements for a signal:
 
 1. Inside a **kill zone**,
-2. after a recent **liquidity sweep** on the opposite side,
-3. with a **structure event** (BOS/CHoCH/MSS) confirming the direction,
-4. while price taps an unmitigated **order block** or unfilled **FVG**,
-5. targeting the nearest opposing liquidity pool at **≥ 2R**.
+2. price tapping an unmitigated **order block** or unfilled **FVG** (sets
+   the direction),
+
+plus at least `MIN_CONFLUENCE` (default 1) of the two narrative conditions:
+
+3. a recent **liquidity sweep** on the opposite side,
+4. a recent **structure event** (BOS/CHoCH/MSS) confirming the direction.
+
+Targets prefer the nearest opposing liquidity pool, falling back to a fixed
+`MIN_RR` (default 2R) target; sub-2R setups are discarded and a direction
+won't re-fire within the cooldown window. Set `MIN_CONFLUENCE = 2` in
+`config.py` for strict A+-only mode (trades much less often).
+
+## Paper trading (`ict/paper.py`)
+
+Live runs enter signals as simulated positions: size is computed so a stop
+hit loses `RISK_PER_TRADE` (1%) of the account, positions are managed to
+stop/target on each poll (a bar spanning both counts as a stop —
+conservative), state survives restarts via `paper_state.json`, and every
+closed trade is appended to `trades.csv`. No real orders are sent anywhere.
 
 ## Setup
 

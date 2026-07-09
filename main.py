@@ -32,6 +32,10 @@ from ict import (
     generate_signals,
 )
 from ict.killzones import active_kill_zone, kill_zone_mask
+from ict.paper import PaperTrader
+
+# a signal is tradeable if it fired on one of the last N closed bars
+FRESH_BARS = 2
 
 
 def compute_macd(prices: pd.Series) -> tuple[pd.Series, pd.Series]:
@@ -134,7 +138,7 @@ def print_legacy_signal(df: pd.DataFrame) -> None:
           f"@ {prices[-1]:.0f}")
 
 
-def live_once() -> list:
+def live_once(trader: PaperTrader | None = None) -> list:
     print(f"Fetching live {TICKER} candles ({YF_SYMBOL})...")
     df = fetch_ohlc()
     signals = run(df)
@@ -143,23 +147,28 @@ def live_once() -> list:
     now = df.index[-1]
     zone = active_kill_zone(now)
     print(f"\nLast bar {now} -> kill zone: {zone or 'none (stand aside)'}")
+
+    if trader is not None:
+        # manage any open position against the newest bars first
+        trader.update(df)
+        # then, if flat, enter the freshest signal
+        if not trader.in_position:
+            fresh = [s for s in signals if s.index >= len(df) - FRESH_BARS]
+            if fresh:
+                trader.enter(fresh[-1])
+        print(f"\n{trader.status()}")
     return signals
 
 
 def live_loop() -> None:
-    """Poll the feed each REFRESH_SECONDS and announce only new ICT signals."""
-    seen: set = set()
-    print(f"Live mode: refreshing every {REFRESH_SECONDS}s. Ctrl-C to stop.\n")
+    """Poll the feed each REFRESH_SECONDS; manage the paper account and
+    enter new ICT setups as they appear."""
+    trader = PaperTrader()
+    print(f"Live mode: refreshing every {REFRESH_SECONDS}s. Ctrl-C to stop.")
+    print(trader.status() + "\n")
     while True:
         try:
-            signals = live_once()
-            for s in signals:
-                key = (s.time, s.direction)
-                if key not in seen:
-                    seen.add(key)
-                    print(f"\n*** NEW SETUP: {s.direction.upper()} "
-                          f"{TICKER} @ {s.entry:.0f} | stop {s.stop:.0f} "
-                          f"| target {s.target:.0f} | RR {s.rr:.1f} ***")
+            live_once(trader)
         except Exception as exc:          # keep the loop alive on feed hiccups
             print(f"[warn] {exc}")
         print("-" * 60)
@@ -178,4 +187,4 @@ if __name__ == "__main__":
         run(df)
         print_legacy_signal(df)
     else:
-        live_once()
+        live_once(PaperTrader())

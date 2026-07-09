@@ -1,23 +1,32 @@
 """ICT confluence strategy for US30.
 
-A signal fires on a bar only when the pieces line up:
+Hard requirements for a signal on a bar:
 
 1. Kill zone     - the bar opens inside London Open or New York AM.
-2. Narrative     - a liquidity pool was just swept (stop hunt), suggesting the
-                   move against it is fuelled.
-3. Structure     - a CHoCH/MSS (reversal) or BOS (continuation) confirms the
-                   direction away from the swept pool.
-4. Entry zone    - price is trading back into an unmitigated order block or
-                   an unfilled fair value gap aligned with that direction.
+2. Entry zone    - price is trading back into an unmitigated order block or
+                   an unfilled fair value gap, which sets the direction.
 
-Stops go behind the entry zone, targets at the opposite-side liquidity pool;
-setups below MIN_RR are discarded.
+Plus at least MIN_CONFLUENCE of the two narrative conditions:
+
+3. Sweep         - a liquidity pool opposite the trade direction was swept
+                   recently (stop hunt fuels the move).
+4. Structure     - a recent BOS/CHoCH/MSS confirms the direction.
+
+Stops go behind the entry zone. Targets prefer the nearest opposing
+liquidity pool; with none in reach, a fixed MIN_RR target is used.
+Setups below MIN_RR are discarded, and the same direction won't fire
+again within SIGNAL_COOLDOWN_BARS.
 """
 from dataclasses import dataclass
 
 import pandas as pd
 
-from config import MIN_RR
+from config import (
+    MIN_CONFLUENCE,
+    MIN_RR,
+    SIGNAL_COOLDOWN_BARS,
+    SIGNAL_FRESHNESS_BARS,
+)
 from ict.fvg import find_fair_value_gaps
 from ict.killzones import active_kill_zone
 from ict.liquidity import find_liquidity_pools, find_liquidity_sweeps
@@ -34,6 +43,7 @@ class Signal:
     stop: float
     target: float
     kill_zone: str
+    confluence: int       # narrative conditions met (sweep, structure)
     reasons: list
 
     @property
@@ -42,11 +52,10 @@ class Signal:
         return abs(self.target - self.entry) / risk if risk else 0.0
 
 
-# How many bars a sweep or structure event stays "fresh" as confluence.
-RECENT = 12
-
-
-def generate_signals(df: pd.DataFrame, min_rr: float = MIN_RR) -> list[Signal]:
+def generate_signals(df: pd.DataFrame,
+                     min_rr: float = MIN_RR,
+                     min_confluence: int = MIN_CONFLUENCE,
+                     recent: int = SIGNAL_FRESHNESS_BARS) -> list:
     """df needs columns open/high/low/close and a DatetimeIndex."""
     structure = analyze_structure(df)
     pools = find_liquidity_pools(df)
@@ -55,6 +64,7 @@ def generate_signals(df: pd.DataFrame, min_rr: float = MIN_RR) -> list[Signal]:
     blocks = find_order_blocks(df)
 
     signals: list[Signal] = []
+    last_fired = {"long": -10**9, "short": -10**9}
 
     for i in range(len(df)):
         zone = active_kill_zone(df.index[i])
@@ -65,37 +75,22 @@ def generate_signals(df: pd.DataFrame, min_rr: float = MIN_RR) -> list[Signal]:
         close = float(df["close"].iloc[i])
 
         for direction in ("long", "short"):
+            if i - last_fired[direction] < SIGNAL_COOLDOWN_BARS:
+                continue
             bullish = direction == "long"
+            want = "bullish" if bullish else "bearish"
 
-            # 2. a sweep of the pool opposite our direction, recently
-            sweep = next((p for p in sweeps if p.swept_at is not None
-                          and 0 <= i - p.swept_at <= RECENT
-                          and p.side == ("sell_side" if bullish else "buy_side")),
-                         None)
-            if sweep is None:
-                continue
-
-            # 3. structure agrees, confirmed by a recent event our way
-            event = next((e for e in reversed(structure.events)
-                          if e.index <= i and i - e.index <= RECENT
-                          and e.direction == ("bullish" if bullish else "bearish")),
-                         None)
-            if event is None:
-                continue
-
-            # 4. bar taps an aligned, still-valid OB or FVG
+            # 2. bar taps an aligned, still-valid OB or FVG (required)
             zone_hit = None
             for ob in blocks:
-                if (ob.direction == ("bullish" if bullish else "bearish")
-                        and ob.index < i
+                if (ob.direction == want and ob.index < i
                         and (ob.invalidated_at is None or ob.invalidated_at > i)
                         and bar_low <= ob.top and bar_high >= ob.bottom):
                     zone_hit = ("order block", ob.top, ob.bottom)
                     break
             if zone_hit is None:
                 for gap in gaps:
-                    if (gap.direction == ("bullish" if bullish else "bearish")
-                            and gap.index < i
+                    if (gap.direction == want and gap.index < i
                             and (gap.filled_at is None or gap.filled_at > i)
                             and bar_low <= gap.top and bar_high >= gap.bottom):
                         zone_hit = ("fair value gap", gap.top, gap.bottom)
@@ -103,36 +98,68 @@ def generate_signals(df: pd.DataFrame, min_rr: float = MIN_RR) -> list[Signal]:
             if zone_hit is None:
                 continue
 
-            zone_name, zone_top, zone_bottom = zone_hit
-            entry = close
-            stop = zone_bottom - 1.0 if bullish else zone_top + 1.0
+            reasons = []
+            confluence = 0
 
-            # target: nearest unswept liquidity on the opposite side
-            if bullish:
-                targets = [p.price for p in pools
-                           if p.side == "buy_side" and p.swept_at is None
-                           and p.price > entry]
-                target = min(targets) if targets else None
-            else:
-                targets = [p.price for p in pools
-                           if p.side == "sell_side" and p.swept_at is None
-                           and p.price < entry]
-                target = max(targets) if targets else None
-            if target is None:
+            # 3. a recent sweep of the pool opposite our direction
+            sweep = next((p for p in sweeps if p.swept_at is not None
+                          and 0 <= i - p.swept_at <= recent
+                          and p.side == ("sell_side" if bullish else "buy_side")),
+                         None)
+            if sweep is not None:
+                confluence += 1
+                reasons.append(
+                    f"{'sell-side' if bullish else 'buy-side'} liquidity swept "
+                    f"at {sweep.price:.0f} (bar {sweep.swept_at})")
+
+            # 4. a recent structure event our way
+            event = next((e for e in reversed(structure.events)
+                          if e.index <= i and i - e.index <= recent
+                          and e.direction == want),
+                         None)
+            if event is not None:
+                confluence += 1
+                reasons.append(
+                    f"{event.kind} {event.direction} through {event.price:.0f}")
+
+            if confluence < min_confluence:
                 continue
 
-            sig = Signal(
-                index=i, time=df.index[i], direction=direction,
-                entry=entry, stop=stop, target=target, kill_zone=zone,
-                reasons=[
-                    f"{'sell-side' if bullish else 'buy-side'} liquidity swept "
-                    f"at {sweep.price:.0f} (bar {sweep.swept_at})",
-                    f"{event.kind} {event.direction} through {event.price:.0f}",
-                    f"price tapped {'bullish' if bullish else 'bearish'} "
-                    f"{zone_name} {zone_bottom:.0f}-{zone_top:.0f}",
-                ],
-            )
+            zone_name, zone_top, zone_bottom = zone_hit
+            reasons.append(f"price tapped {want} {zone_name} "
+                           f"{zone_bottom:.0f}-{zone_top:.0f}")
+
+            entry = close
+            stop = zone_bottom - 1.0 if bullish else zone_top + 1.0
+            risk = abs(entry - stop)
+            if risk == 0:
+                continue
+
+            # target: nearest unswept opposing pool, else fixed MIN_RR
+            if bullish:
+                pool_targets = [p.price for p in pools
+                                if p.side == "buy_side" and p.swept_at is None
+                                and p.price >= entry + min_rr * risk]
+                target = min(pool_targets) if pool_targets \
+                    else entry + min_rr * risk
+            else:
+                pool_targets = [p.price for p in pools
+                                if p.side == "sell_side" and p.swept_at is None
+                                and p.price <= entry - min_rr * risk]
+                target = max(pool_targets) if pool_targets \
+                    else entry - min_rr * risk
+            if pool_targets:
+                reasons.append(f"targeting resting liquidity at {target:.0f}")
+            else:
+                reasons.append(f"no pool in reach - fixed {min_rr:.0f}R target "
+                               f"at {target:.0f}")
+
+            sig = Signal(index=i, time=df.index[i], direction=direction,
+                         entry=entry, stop=stop, target=target,
+                         kill_zone=zone, confluence=confluence,
+                         reasons=reasons)
             if sig.rr >= min_rr:
                 signals.append(sig)
+                last_fired[direction] = i
 
     return signals
