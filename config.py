@@ -36,7 +36,13 @@ TIMEZONE = "America/New_York"
 KILL_ZONES = {
     "london_open": ("02:00", "05:00"),
     "new_york_am": ("08:30", "11:00"),
+    "new_york_pm": ("13:30", "16:00"),
 }
+# Day-long mode: False lets the bot trade outside kill zones too, but those
+# off-hours bars must meet OFF_ZONE_CONFLUENCE (sweep AND structure) instead
+# of MIN_CONFLUENCE. Set True to restrict entries to kill zones only.
+KILL_ZONES_ONLY = False
+OFF_ZONE_CONFLUENCE = 2
 
 # --- Signal confluence ---
 # How many bars a sweep or structure event stays "fresh" as confluence

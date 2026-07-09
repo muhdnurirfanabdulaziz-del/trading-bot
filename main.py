@@ -12,6 +12,7 @@ import time
 import pandas as pd
 
 from config import (
+    KILL_ZONES_ONLY,
     LONG_WINDOW,
     MACD_FAST,
     MACD_SIGNAL,
@@ -146,7 +147,12 @@ def live_once(trader: PaperTrader | None = None) -> list:
 
     now = df.index[-1]
     zone = active_kill_zone(now)
-    print(f"\nLast bar {now} -> kill zone: {zone or 'none (stand aside)'}")
+    if zone is None:
+        where = ("off hours - trading with full confluence required"
+                 if not KILL_ZONES_ONLY else "none (standing aside)")
+    else:
+        where = zone
+    print(f"\nLast bar {now} -> kill zone: {where}")
 
     if trader is not None:
         # manage any open position against the newest bars first

@@ -19,26 +19,28 @@ running on live intraday data from yfinance (`^DJI`).
 - **Order Blocks** (`ict/order_blocks.py`) — the last opposing candle before
   a displacement move, i.e. where institutions accumulated/distributed.
   Zones are tracked through mitigation and invalidation.
-- **Kill Zones** (`ict/killzones.py`) — London Open (02:00–05:00) and
-  New York AM (08:30–11:00), in New York local time so EST/EDT is automatic.
+- **Kill Zones** (`ict/killzones.py`) — London Open (02:00–05:00),
+  New York AM (08:30–11:00) and New York PM (13:30–16:00), in New York
+  local time so EST/EDT is automatic.
 
 ## Strategy (`ict/strategy.py`)
 
-Hard requirements for a signal:
+The bot trades **day-long**. The hard requirement for a signal is price
+tapping an unmitigated **order block** or unfilled **FVG** (which sets the
+direction), plus enough of the two narrative conditions:
 
-1. Inside a **kill zone**,
-2. price tapping an unmitigated **order block** or unfilled **FVG** (sets
-   the direction),
+- a recent **liquidity sweep** on the opposite side,
+- a recent **structure event** (BOS/CHoCH/MSS) confirming the direction.
 
-plus at least `MIN_CONFLUENCE` (default 1) of the two narrative conditions:
-
-3. a recent **liquidity sweep** on the opposite side,
-4. a recent **structure event** (BOS/CHoCH/MSS) confirming the direction.
+Inside a **kill zone** `MIN_CONFLUENCE` (default 1) of the two suffices;
+outside kill zones both are required (`OFF_ZONE_CONFLUENCE`) because
+institutional flow is thinner off-hours. Set `KILL_ZONES_ONLY = True` to
+restrict entries to kill zones, or `MIN_CONFLUENCE = 2` for strict
+A+-only mode everywhere.
 
 Targets prefer the nearest opposing liquidity pool, falling back to a fixed
 `MIN_RR` (default 2R) target; sub-2R setups are discarded and a direction
-won't re-fire within the cooldown window. Set `MIN_CONFLUENCE = 2` in
-`config.py` for strict A+-only mode (trades much less often).
+won't re-fire within the cooldown window.
 
 ## Paper trading (`ict/paper.py`)
 

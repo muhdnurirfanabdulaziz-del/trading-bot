@@ -1,16 +1,20 @@
-"""ICT confluence strategy for US30.
+"""ICT confluence strategy for US30 - day-long operation.
 
-Hard requirements for a signal on a bar:
+Hard requirement for a signal on a bar:
 
-1. Kill zone     - the bar opens inside London Open or New York AM.
-2. Entry zone    - price is trading back into an unmitigated order block or
+1. Entry zone    - price is trading back into an unmitigated order block or
                    an unfilled fair value gap, which sets the direction.
 
-Plus at least MIN_CONFLUENCE of the two narrative conditions:
+Plus enough of the two narrative conditions:
 
-3. Sweep         - a liquidity pool opposite the trade direction was swept
+2. Sweep         - a liquidity pool opposite the trade direction was swept
                    recently (stop hunt fuels the move).
-4. Structure     - a recent BOS/CHoCH/MSS confirms the direction.
+3. Structure     - a recent BOS/CHoCH/MSS confirms the direction.
+
+Inside a kill zone (London Open, NY AM, NY PM) MIN_CONFLUENCE of the two
+suffices; outside kill zones the bar must meet OFF_ZONE_CONFLUENCE (both,
+by default) because institutional flow is thinner off-hours. Set
+KILL_ZONES_ONLY = True in config to disable off-hours trading entirely.
 
 Stops go behind the entry zone. Targets prefer the nearest opposing
 liquidity pool; with none in reach, a fixed MIN_RR target is used.
@@ -22,8 +26,10 @@ from dataclasses import dataclass
 import pandas as pd
 
 from config import (
+    KILL_ZONES_ONLY,
     MIN_CONFLUENCE,
     MIN_RR,
+    OFF_ZONE_CONFLUENCE,
     SIGNAL_COOLDOWN_BARS,
     SIGNAL_FRESHNESS_BARS,
 )
@@ -69,7 +75,13 @@ def generate_signals(df: pd.DataFrame,
     for i in range(len(df)):
         zone = active_kill_zone(df.index[i])
         if zone is None:
-            continue
+            if KILL_ZONES_ONLY:
+                continue
+            required = max(OFF_ZONE_CONFLUENCE, min_confluence)
+            zone_label = "off_hours"
+        else:
+            required = min_confluence
+            zone_label = zone
 
         bar_low, bar_high = float(df["low"].iloc[i]), float(df["high"].iloc[i])
         close = float(df["close"].iloc[i])
@@ -122,7 +134,7 @@ def generate_signals(df: pd.DataFrame,
                 reasons.append(
                     f"{event.kind} {event.direction} through {event.price:.0f}")
 
-            if confluence < min_confluence:
+            if confluence < required:
                 continue
 
             zone_name, zone_top, zone_bottom = zone_hit
@@ -156,7 +168,7 @@ def generate_signals(df: pd.DataFrame,
 
             sig = Signal(index=i, time=df.index[i], direction=direction,
                          entry=entry, stop=stop, target=target,
-                         kill_zone=zone, confluence=confluence,
+                         kill_zone=zone_label, confluence=confluence,
                          reasons=reasons)
             if sig.rr >= min_rr:
                 signals.append(sig)

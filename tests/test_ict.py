@@ -113,16 +113,28 @@ class TestKillZones:
 
 
 class TestStrategy:
-    def test_signals_only_in_kill_zones_and_meet_rr(self):
+    def test_signals_are_well_formed_and_meet_rr(self):
         df = sample_us30()
         for sig in generate_signals(df, min_rr=2.0):
-            assert sig.kill_zone in ("london_open", "new_york_am")
+            assert sig.kill_zone in ("london_open", "new_york_am",
+                                     "new_york_pm", "off_hours")
             assert sig.rr >= 2.0
             assert sig.direction in ("long", "short")
             if sig.direction == "long":
                 assert sig.stop < sig.entry < sig.target
             else:
                 assert sig.target < sig.entry < sig.stop
+
+    def test_off_hours_requires_full_confluence(self):
+        for sig in generate_signals(sample_us30()):
+            if sig.kill_zone == "off_hours":
+                assert sig.confluence >= 2
+
+    def test_kill_zones_only_mode_blocks_off_hours(self, monkeypatch):
+        import ict.strategy as strat
+        monkeypatch.setattr(strat, "KILL_ZONES_ONLY", True)
+        signals = generate_signals(sample_us30())
+        assert all(s.kill_zone != "off_hours" for s in signals)
 
     def test_default_confluence_actually_fires(self):
         # at MIN_CONFLUENCE=1 the sample day must produce trades
