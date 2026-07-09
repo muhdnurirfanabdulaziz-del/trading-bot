@@ -55,6 +55,14 @@ MIN_CONFLUENCE = 1
 # Bars to wait before signalling the same direction again.
 SIGNAL_COOLDOWN_BARS = 12
 
+# --- MT4 bridge (used by `python main.py --mt4`) ---
+# Point this at your terminal's MQL4\Files folder:
+# MT4 menu: File -> Open Data Folder -> MQL4 -> Files. Example:
+# MT4_FILES_DIR = r"C:\Users\you\AppData\Roaming\MetaQuotes\Terminal\<id>\MQL4\Files"
+MT4_FILES_DIR = ""
+MT4_MAX_LOTS = 5.0       # bot-side cap, on top of the EA's InpMaxLots
+MT4_POLL_SECONDS = 20    # how often to read the EA's files
+
 # --- Risk / paper trading ---
 ACCOUNT_BALANCE = 10_000.0   # starting paper balance
 RISK_PER_TRADE = 0.01        # 1% of account per trade

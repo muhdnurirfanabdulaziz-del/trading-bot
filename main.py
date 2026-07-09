@@ -2,7 +2,8 @@
 
 Usage:
     python main.py                    # one-shot: live US30 data -> ICT analysis
-    python main.py --live             # keep polling every REFRESH_SECONDS
+    python main.py --live             # paper-trade on yfinance data
+    python main.py --mt4              # trade through MetaTrader 4 (see mt4/)
     python main.py --demo             # run on built-in synthetic US30 data
     python main.py path/to/us30.csv   # run on your own OHLC export
 """
@@ -181,6 +182,78 @@ def live_loop() -> None:
         time.sleep(REFRESH_SECONDS)
 
 
+def mt4_loop() -> None:
+    """Trade through MetaTrader 4 via the ICTBridge EA's file interface.
+
+    Each poll: read broker bars + account state, run the ICT engine, and
+    when flat send an open command (with stop and target attached) for a
+    fresh signal. The EA enforces one position, a lot cap, and stays in
+    dry-run mode until its InpEnableTrading input is switched on.
+    """
+    from config import MT4_POLL_SECONDS, RISK_PER_TRADE
+    from mt4_bridge import MT4Bridge
+
+    bridge = MT4Bridge()
+    sent: set = set()
+    last_result_id = 0
+    print("MT4 bridge mode. The EA must be attached to your US30 M5 chart.")
+    print("NOTE: orders only execute once the EA input InpEnableTrading is "
+          "true - test on a DEMO account first.\n")
+
+    while True:
+        try:
+            df, meta = bridge.read_bars()
+            status = bridge.read_status()
+
+            if meta["period"] != 5:
+                print(f"[warn] EA chart is M{meta['period']}, expected M5 - "
+                      f"attach ICTBridge to the 5-minute chart")
+
+            for rid, outcome, detail in bridge.read_results(last_result_id):
+                last_result_id = max(last_result_id, rid)
+                print(f"EA result: {outcome} - {detail}")
+
+            in_position = bool(status.get("position"))
+            armed = bool(status.get("trading_enabled"))
+            print(f"{df.index[-1]} | {meta['symbol']} M{meta['period']} "
+                  f"| balance {status.get('balance', '?')} "
+                  f"| {'POSITION OPEN' if in_position else 'flat'}"
+                  f"{'' if armed else ' | EA DRY-RUN'}")
+            if in_position:
+                print(f"  {status.get('direction', '?').upper()} "
+                      f"{status.get('lots')} lots @ {status.get('entry')} "
+                      f"(sl {status.get('sl')}, tp {status.get('tp')}, "
+                      f"P&L {status.get('profit')})")
+
+            if not in_position:
+                signals = generate_signals(df)
+                fresh = [s for s in signals
+                         if s.index >= len(df) - FRESH_BARS
+                         and (s.time, s.direction) not in sent]
+                if fresh:
+                    s = fresh[-1]
+                    lots = bridge.lot_size(float(status.get("balance", 0)),
+                                           abs(s.entry - s.stop), meta)
+                    if lots > 0:
+                        cmd = bridge.send_open(s.direction, lots,
+                                               s.stop, s.target)
+                        sent.add((s.time, s.direction))
+                        print(f">>> SENT {s.direction.upper()} {lots} lots "
+                              f"| stop {s.stop:.0f} | target {s.target:.0f} "
+                              f"| RR {s.rr:.1f} | cmd {cmd} ({s.kill_zone})")
+                        for r in s.reasons:
+                            print(f"    - {r}")
+                    else:
+                        print(f"[skip] signal found but risk sizing gave 0 "
+                              f"lots (balance {status.get('balance')}, "
+                              f"risk {RISK_PER_TRADE:.0%})")
+        except FileNotFoundError as exc:
+            print(f"waiting for EA files... ({exc})")
+        except Exception as exc:      # keep the loop alive on partial writes
+            print(f"[warn] {exc}")
+        time.sleep(MT4_POLL_SECONDS)
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else None
     if arg == "--demo":
@@ -188,6 +261,8 @@ if __name__ == "__main__":
         run(df)
     elif arg == "--live":
         live_loop()
+    elif arg == "--mt4":
+        mt4_loop()
     elif arg:
         df = load_csv(arg)
         run(df)

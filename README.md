@@ -42,6 +42,15 @@ Targets prefer the nearest opposing liquidity pool, falling back to a fixed
 `MIN_RR` (default 2R) target; sub-2R setups are discarded and a direction
 won't re-fire within the cooldown window.
 
+## MetaTrader 4 execution (`mt4/`)
+
+`python main.py --mt4` trades through your MT4 terminal via the
+`ICTBridge.mq4` Expert Advisor attached to your broker's US30 M5 chart:
+the EA exports live broker candles and account state to files, the bot
+runs the ICT engine on them and writes risk-sized orders back (stop and
+take-profit always attached, one position at a time). The EA starts in
+dry-run mode. Full setup guide: [mt4/README.md](mt4/README.md).
+
 ## Paper trading (`ict/paper.py`)
 
 Live runs enter signals as simulated positions: size is computed so a stop
