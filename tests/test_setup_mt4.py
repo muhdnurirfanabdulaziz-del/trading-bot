@@ -25,7 +25,7 @@ class TestSetup:
         t = make_terminal(tmp_path, "ABC123")
         dest = install_ea(t)
         assert dest.exists()
-        assert dest.name == "ICTBridge.mq4"
+        assert dest.name == "US30Sentinel.mq4"
         assert "InpEnableTrading" in dest.read_text()
 
     def test_config_rewrite_targets_assignment_not_comment(self, tmp_path):

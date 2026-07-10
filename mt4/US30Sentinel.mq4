@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| ICTBridge.mq4                                                     |
+//| US30Sentinel.mq4                                                     |
 //| File bridge between the Python ICT bot and MetaTrader 4.          |
 //|                                                                   |
 //| Attach to the US30 M5 chart. Every 2 seconds it:                  |
@@ -168,7 +168,7 @@ void ProcessCommands()
       int type = (dir == "long") ? OP_BUY : OP_SELL;
       double price = (type == OP_BUY) ? Ask : Bid;
       int ticket = OrderSend(Symbol(), type, lots, price, InpSlippagePoints,
-                             sl, tp, "ICT bot", InpMagic, 0, clrDodgerBlue);
+                             sl, tp, "US30 Sentinel", InpMagic, 0, clrDodgerBlue);
       if(ticket < 0)
          LogResult(id, "error", "OrderSend failed: " + IntegerToString(GetLastError()));
       else
@@ -212,6 +212,6 @@ void LogResult(int id, string outcome, string detail)
    FileWriteString(fh, StringFormat("%d,%d,%s,%s\n",
                    id, (int)TimeGMT(), outcome, detail));
    FileClose(fh);
-   Print("ICTBridge: ", outcome, " - ", detail);
+   Print("US30 Sentinel: ", outcome, " - ", detail);
 }
 //+------------------------------------------------------------------+

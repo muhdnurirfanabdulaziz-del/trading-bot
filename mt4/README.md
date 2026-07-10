@@ -1,11 +1,11 @@
 # Connecting the bot to MetaTrader 4
 
 MT4 cannot be driven from Python directly, so the connection is a file
-bridge: the `ICTBridge.mq4` Expert Advisor runs inside MT4 and talks to
+bridge: the `US30Sentinel.mq4` Expert Advisor runs inside MT4 and talks to
 the bot through four small files in the terminal's `MQL4\Files` folder.
 
 ```
-MT4 (ICTBridge EA)                      Python bot (main.py --mt4)
+MT4 (US30 Sentinel EA)                      Python bot (main.py --mt4)
   exports broker US30 M5 bars  ------>  ict_bars.csv      reads bars
   exports account & position   ------>  ict_status.csv    reads state
   executes orders              <------  ict_commands.csv  writes orders
@@ -28,18 +28,18 @@ python setup_mt4.py
 
 This finds your MT4 terminal, installs and compiles the EA, and writes
 `MT4_FILES_DIR` into `config.py` for you. Then do the two steps MT4 only
-allows by hand: open the **US30 M5** chart, drag `ICTBridge` from the
+allows by hand: open the **US30 M5** chart, drag `US30Sentinel` from the
 Navigator onto it (tick *Allow live trading* in the dialog), and check
 the **AutoTrading** toolbar button is ON (green).
 
 ### Manual (if the script can't find your install)
 
 1. Open MT4 -> `File` -> `Open Data Folder` -> `MQL4` -> `Experts`, and
-   copy `ICTBridge.mq4` there.
-2. In MT4 press F4 (MetaEditor), open `ICTBridge.mq4`, press **Compile**
+   copy `US30Sentinel.mq4` there.
+2. In MT4 press F4 (MetaEditor), open `US30Sentinel.mq4`, press **Compile**
    (no errors expected), then close MetaEditor.
 3. Back in MT4, open a **US30 chart** and set the timeframe to **M5**.
-4. Drag `ICTBridge` from the Navigator onto that chart. In the dialog:
+4. Drag `US30Sentinel` from the Navigator onto that chart. In the dialog:
    - `Common` tab: tick **Allow live trading**.
    - `Inputs` tab: leave `InpEnableTrading = false` for the first session
      (dry run - it logs what it *would* do without placing orders).

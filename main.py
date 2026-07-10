@@ -183,7 +183,7 @@ def live_loop() -> None:
 
 
 def mt4_loop() -> None:
-    """Trade through MetaTrader 4 via the ICTBridge EA's file interface.
+    """Trade through MetaTrader 4 via the US30 Sentinel EA's file interface.
 
     Each poll: read broker bars + account state, run the ICT engine, and
     when flat send an open command (with stop and target attached) for a
@@ -207,7 +207,7 @@ def mt4_loop() -> None:
 
             if meta["period"] != 5:
                 print(f"[warn] EA chart is M{meta['period']}, expected M5 - "
-                      f"attach ICTBridge to the 5-minute chart")
+                      f"attach US30 Sentinel to the 5-minute chart")
 
             for rid, outcome, detail in bridge.read_results(last_result_id):
                 last_result_id = max(last_result_id, rid)

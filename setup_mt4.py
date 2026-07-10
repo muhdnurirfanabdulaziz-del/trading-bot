@@ -2,7 +2,7 @@
 
     python setup_mt4.py
 
-It finds your MT4 terminal data folder(s), copies the ICTBridge EA into
+It finds your MT4 terminal data folder(s), copies the US30 Sentinel EA into
 MQL4\\Experts, tries to compile it with MetaEditor, and points
 MT4_FILES_DIR in config.py at the right folder. The only steps it cannot
 do (MT4 allows them only by hand, by design) are printed at the end:
@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
-EA_SOURCE = REPO / "mt4" / "ICTBridge.mq4"
+EA_SOURCE = REPO / "mt4" / "US30Sentinel.mq4"
 CONFIG = REPO / "config.py"
 
 
@@ -108,11 +108,11 @@ def main() -> int:
 
     metaeditor = find_metaeditor(terminal)
     if metaeditor and compile_ea(metaeditor, dest):
-        print("2. EA compiled   -> ICTBridge.ex4 ready")
+        print("2. EA compiled   -> US30Sentinel.ex4 ready")
     else:
         print("2. Could not auto-compile. Either restart MT4 (it compiles "
               "sources on startup) or open MetaEditor (F4), open "
-              "ICTBridge.mq4 and press Compile.")
+              "US30Sentinel.mq4 and press Compile.")
 
     files_dir = terminal / "MQL4" / "Files"
     files_dir.mkdir(parents=True, exist_ok=True)
@@ -122,7 +122,7 @@ def main() -> int:
     print("""
 Remaining steps (MT4 only allows these by hand):
   4. In MT4: open the US30 chart, set timeframe to M5.
-  5. Drag 'ICTBridge' from Navigator > Expert Advisors onto the chart;
+  5. Drag 'US30Sentinel' from Navigator > Expert Advisors onto the chart;
      in the dialog tick 'Allow live trading' on the Common tab.
      Leave InpEnableTrading = false for the first (dry-run) session.
   6. Make sure the AutoTrading toolbar button is ON (green).

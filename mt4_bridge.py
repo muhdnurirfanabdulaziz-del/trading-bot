@@ -1,4 +1,4 @@
-"""Python side of the MT4 file bridge (pairs with mt4/ICTBridge.mq4).
+"""Python side of the MT4 file bridge (pairs with mt4/US30Sentinel.mq4).
 
 The EA exports broker bars and account state into the terminal's
 MQL4/Files folder; this module reads them and writes order commands back.

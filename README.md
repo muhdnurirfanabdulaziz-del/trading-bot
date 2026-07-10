@@ -1,6 +1,6 @@
-# trading-bot
+# US30 Sentinel
 
-An algorithmic trading bot for **US30** built around ICT / Smart Money Concepts,
+**US30 Sentinel** is an algorithmic trading bot for **US30** built around ICT / Smart Money Concepts,
 running on live intraday data from yfinance (`^DJI`).
 
 ## Concepts implemented (`ict/` package)
@@ -45,7 +45,7 @@ won't re-fire within the cooldown window.
 ## MetaTrader 4 execution (`mt4/`)
 
 `python main.py --mt4` trades through your MT4 terminal via the
-`ICTBridge.mq4` Expert Advisor attached to your broker's US30 M5 chart:
+`US30Sentinel.mq4` Expert Advisor attached to your broker's US30 M5 chart:
 the EA exports live broker candles and account state to files, the bot
 runs the ICT engine on them and writes risk-sized orders back (stop and
 take-profit always attached, one position at a time). The EA starts in
