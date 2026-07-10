@@ -18,6 +18,22 @@ a stop-out loses `RISK_PER_TRADE` (1%) of the account.
 
 ## Setup (once)
 
+### Automatic (recommended)
+
+On the laptop with MT4 installed:
+
+```bash
+python setup_mt4.py
+```
+
+This finds your MT4 terminal, installs and compiles the EA, and writes
+`MT4_FILES_DIR` into `config.py` for you. Then do the two steps MT4 only
+allows by hand: open the **US30 M5** chart, drag `ICTBridge` from the
+Navigator onto it (tick *Allow live trading* in the dialog), and check
+the **AutoTrading** toolbar button is ON (green).
+
+### Manual (if the script can't find your install)
+
 1. Open MT4 -> `File` -> `Open Data Folder` -> `MQL4` -> `Experts`, and
    copy `ICTBridge.mq4` there.
 2. In MT4 press F4 (MetaEditor), open `ICTBridge.mq4`, press **Compile**
